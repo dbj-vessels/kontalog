@@ -4,7 +4,10 @@ using Kontilog  = dbj.Kontalog.Kontalog;
 
 Kontilog.error("Hello, World!");
 
-for (short k = 0; k < 0xFFF; ++k)
-    Kontilog.info("Hello, {0} !", k);
+for (System.Int32 k = 0; k < 255; ++k)
+    Kontilog.info("Hello, {0,4} !", k);
 
 Kontilog.fatal("I am off!");
+
+Console.WriteLine("Done");
+Console.ReadLine();
