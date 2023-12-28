@@ -1,15 +1,25 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿#define stress_test
 
-using Log  = dbj.Kontalog.Kontalog;
+using Log = dbj.Kontalog.Kontalog;
 
-Log.error("Hello, KONTALOG logging Q!");
+Log.info("Hello, KONTALOG logging Q!");
 
-for (System.Int32 k = 0; k < 0xF; ++k)
-    Log.info("Hello, {0,4} !", k);
-
-Log.fatal("I am off!");
-
-Log.info("Done");
+#if stress_test
+Log.info("KONTALOG stress test will attempt to run forever. Press ENTER to start of CTRL+C to stop,");
 Console.ReadLine();
+long counter = 0L;
+while (true)
+{
+    counter = 1 + (counter % long.MaxValue);
+    Log.debug("Counter{0,12} !", counter);
+}
+#else
+for (System.Int32 k = 0; k < 0xF; ++k)
+    Log.debug("Hello, {0,4} !", k);
+Log.fatal("Loop (size = {0}) done.", 0xF);
+
+Log.info("Done. Press ENTER");
+Console.ReadLine();
+#endif
 
 // WARNING: Console.Writeline will be out of sync, if used 
