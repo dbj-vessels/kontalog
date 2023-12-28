@@ -1,10 +1,10 @@
 #define LOCAL_ISO_8601
 
-using System;
+// using System;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
+// using System.Threading;
+// using System.Threading.Tasks;
 
 
 
@@ -24,13 +24,13 @@ namespace dbj.Kontalog;
 // https://stackoverflow.com/a/3670628
 // using System.Collections.Concurrent;
 //
-// When in container, for logging code needs only to write to STDOUT
+// When in a container, for logging, code need only write to STDOUT
 //
 
-    public static class Kontalog
-    {
+public static class Kontalog
+{
 #if LOCAL_ISO_8601
-            // Console.WriteLine("Hello my UTC timestamp      : " + iso8601(1));
+    // Console.WriteLine("Hello my UTC timestamp      : " + iso8601(1));
     // Console.WriteLine("Hello iso8601 with 'T'      : " + iso8601(2));
     // Console.WriteLine("Hello full iso8601          : " + iso8601(3));
     // Console.WriteLine("Hello  my local timestamp   : " + iso8601());
@@ -53,31 +53,34 @@ namespace dbj.Kontalog;
                 return DateTime.Now.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
         }
     }
-    #endif
+#endif
 
-        private static BlockingCollection<string> m_Queue = new BlockingCollection<string>();
+    private static BlockingCollection<string> m_Queue = new BlockingCollection<string>();
 
-        static Kontalog()
+    static Kontalog()
+    {
+        // this code works, unfortunately  ;)
+        // WARNING: Console.Writeline will be out of sync, if used in a program
+        var thread = new Thread(
+          () =>
+          {
+              // When in a container, for logging, code need only write to STDOUT
+              while (true) System.Console.WriteLine(m_Queue.Take());
+          });
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Add(string format, params object[] args)
+    {
+        if (args.Length < 1)
+            m_Queue.Add(format);
+        else
         {
-            var thread = new Thread(
-              () =>
-              {   // this line works, unfortunately ;)
-                  while (true) System.Console.WriteLine(m_Queue.Take());
-              });
-            thread.IsBackground = true;
-            thread.Start();
+            m_Queue.Add(string.Format(format, args));
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Add(string format, params object[] args)
-        {
-            if (args.Length < 1)
-                m_Queue.Add(format);
-            else
-            {
-                m_Queue.Add(string.Format(format, args));
-            }
-        }
+    }
 
 #if KONTALOG_HANDLES_SQLSVR_CLIENT_EXCEPTION
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -87,64 +90,68 @@ namespace dbj.Kontalog;
             string.Format("[" + iso8601() + "]" + "SQL SRV name: {0}\nSQL Exception code: {1}\nmessage: {2}", sqx.Server, sqx.ErrorCode, sqx.Message));
         }
 #endif
-        // and  now lets turn this into the 'logging lib'
-        public enum Level
-        {
-            fatal, error, debug, info
-        }
+    // and  now lets turn this into the 'logging lib'
+    public enum Level
+    {
+        fatal, error, debug, info
+    }
 
-        // there are no levels ordering in here
-        // if in Production only fatal messages will be logged
-        public static bool Production { get {
+    // there are no levels ordering in here
+    // if in Production only fatal messages will be logged
+    public static bool Production
+    {
+        get
+        {
 #if DEBUG
-                return false;
+            return false;
 #else
                 return true;
 #endif
-            } }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void log_(Level lvl_, string format, params object[] args)
-        {
-            if (Production)
-            {
-                if (lvl_ > Level.fatal) return;
-            }
-
-            var prefix_ = "[" + iso8601() + "|" + lvl_.ToString() + "]";
-
-            if (args.Length < 1)
-                m_Queue.Add(prefix_ + format);
-            else
-            {
-                m_Queue.Add(prefix_ + string.Format(format, args));
-            }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void fatal(string format, params object[] args)
-        {
-            log_(Level.fatal, format, args);
-        }
-
-        // error and debug work when fatal or info are not the levels
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void error(string format, params object[] args)
-        {
-                log_(Level.error, format, args);
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void debug(string format, params object[] args)
-        {
-                log_(Level.debug, format, args);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void info(string format, params object[] args)
-        {
-            // always
-            log_(Level.info, format, args);
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void log_(Level lvl_, string format, params object[] args)
+    {
+        if (Production)
+        {
+            if (lvl_ > Level.fatal) return;
+        }
+
+        var prefix_ = "[" + iso8601() + "|" + lvl_.ToString() + "]";
+
+        if (args.Length < 1)
+            m_Queue.Add(prefix_ + format);
+        else
+        {
+            m_Queue.Add(prefix_ + string.Format(format, args));
+        }
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void fatal(string format, params object[] args)
+    {
+        log_(Level.fatal, format, args);
+    }
+
+    // error and debug work when fatal or info are not the levels
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void error(string format, params object[] args)
+    {
+        log_(Level.error, format, args);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void debug(string format, params object[] args)
+    {
+        log_(Level.debug, format, args);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void info(string format, params object[] args)
+    {
+        // always
+        log_(Level.info, format, args);
+    }
+}
 
 
 
