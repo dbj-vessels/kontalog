@@ -140,6 +140,7 @@ public static class Kontalog
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void log_(Level lvl_, string format, params object[] args)
     {
+        // if in Production only fatal messages will be logged
         if (Production)
         {
             if (lvl_ > Level.fatal) return;
@@ -164,18 +165,23 @@ public static class Kontalog
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void error(string format, params object[] args)
     {
+        // if in Production only fatal messages will be logged
+        if (Production) return;
         log_(Level.error, format, args);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void debug(string format, params object[] args)
     {
+        // if in Production only fatal messages will be logged
+        if (Production) return;
         log_(Level.debug, format, args);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void info(string format, params object[] args)
     {
-        // always
+        // if in Production only fatal messages will be logged
+        if (Production) return;
         log_(Level.info, format, args);
     }
 }
