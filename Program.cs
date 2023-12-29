@@ -5,17 +5,18 @@ using Log = dbj.Kontalog.Kontalog;
 Log.info("Hello, KONTALOG logging Q!");
 
 #if stress_test
-Log.info("KONTALOG stress test will attempt to run forever. Press ENTER to start of CTRL+C to stop,");
-Console.ReadLine();
+Log.info("KONTALOG stress test will attempt to run forever.");
+
 long counter = 0L;
 while (true)
 {
     counter = 1 + (counter % long.MaxValue);
-    Log.debug("Counter{0,12} !", counter);
+    // in prod only fatal will be shown
+    Log.fatal("Counter: {0,12} !", counter);
 }
 #else
 for (System.Int32 k = 0; k < 0xF; ++k)
-    Log.debug("Hello, {0,4} !", k);
+    Log.debug("Hello, {0,12} !", k);
 Log.fatal("Loop (size = {0}) done.", 0xF);
 
 Log.info("Done. Press ENTER");

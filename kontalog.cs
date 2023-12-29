@@ -55,7 +55,13 @@ public static class Kontalog
     }
 #endif
 
-    private static BlockingCollection<string> m_Queue = new BlockingCollection<string>();
+    private static readonly int Queue_size = 0xFF;
+    // "blocking" means "wait until the operation can be completed"
+    // Note that blocking on maximum capacity is only enabled 
+    // when the BlockingCollection 
+    // has been created with a maximum capacity specified in the constructor
+    private static BlockingCollection<string> Queue_
+    = new BlockingCollection<string>(Queue_size);
 
     static Kontalog()
     {
@@ -65,7 +71,28 @@ public static class Kontalog
           () =>
           {
               // When in a container, for logging, code need only write to STDOUT
-              while (true) System.Console.WriteLine(m_Queue.Take());
+              // while (true) System.Console.WriteLine(Queue_.Take());
+              while (!Queue_.IsCompleted)
+              {
+
+                  string data = string.Empty;
+                  // https://learn.microsoft.com/en-us/dotnet/standard/collections/thread-safe/blockingcollection-overview
+                  try
+                  {
+                      data = Queue_.Take();
+                  }
+                  catch (InvalidOperationException) { }
+
+                  if (data != string.Empty)
+                  {
+                      System.Console.WriteLine(data);
+                  }
+
+                  // Slow down consumer just a little to cause
+                  // collection to fill up faster, and lead to "AddBlocked"
+                  const int spin_wait = 0xFFFFF;
+                  Thread.SpinWait(spin_wait);
+              }
           });
         thread.IsBackground = true;
         thread.Start();
@@ -75,10 +102,10 @@ public static class Kontalog
     public static void Add(string format, params object[] args)
     {
         if (args.Length < 1)
-            m_Queue.Add(format);
+            Queue_.Add(format);
         else
         {
-            m_Queue.Add(string.Format(format, args));
+            Queue_.Add(string.Format(format, args));
         }
     }
 
@@ -86,7 +113,7 @@ public static class Kontalog
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(Microsoft.Data.SqlClient.SqlException sqx)
         {
-            m_Queue.Add(
+            Queue_.Add(
             string.Format("[" + iso8601() + "]" + "SQL SRV name: {0}\nSQL Exception code: {1}\nmessage: {2}", sqx.Server, sqx.ErrorCode, sqx.Message));
         }
 #endif
@@ -121,10 +148,10 @@ public static class Kontalog
         var prefix_ = "[" + iso8601() + "|" + lvl_.ToString() + "]";
 
         if (args.Length < 1)
-            m_Queue.Add(prefix_ + format);
+            Queue_.Add(prefix_ + format);
         else
         {
-            m_Queue.Add(prefix_ + string.Format(format, args));
+            Queue_.Add(prefix_ + string.Format(format, args));
         }
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
