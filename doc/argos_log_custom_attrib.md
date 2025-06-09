@@ -1,4 +1,5 @@
 
+<!------
 # `\Source\IPAN.ServiceCore\Logging\LoggingOperationInvoker.cs`
 
 dakle taj IServiceBehavior to je u stvari WCF/SOAP ujdurma
@@ -24,3 +25,5 @@ public bool IsSynchronous
 }​
 ```
 treba nam nova implementacija koja ce da vrati false  da skratimo prichu
+
+---->
